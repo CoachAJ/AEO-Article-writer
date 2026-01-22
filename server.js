@@ -116,47 +116,53 @@ Generate comprehensive, valuable content that positions the business as an autho
     if (contentData.imagePrompt && (imageProvider === 'gemini' || imageProvider === 'gemini-imagen' || openaiKey)) {
       try {
         if (imageProvider === 'gemini') {
-          // Use Gemini 2.0 Flash Experimental (free tier - native image generation)
+          // Use Gemini 3 Pro Image Preview (free tier image generation)
           const imageResult = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
-            contents: `Generate a distinct image based on this description: ${contentData.imagePrompt}`,
+            model: 'gemini-3-pro-image-preview',
+            contents: {
+              parts: [{ text: `${contentData.imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
+            },
             config: {
-              responseModalities: ['IMAGE']
+              imageConfig: {
+                aspectRatio: '1:1'
+              }
             }
           });
 
           // Extract image from response parts
           const parts = imageResult.candidates?.[0]?.content?.parts || [];
           for (const part of parts) {
-            if (part.inlineData) {
+            if (part.inlineData && part.inlineData.data) {
               imageBase64 = part.inlineData.data;
-              const mimeType = part.inlineData.mimeType || 'image/png';
-              imageUrl = `data:${mimeType};base64,${imageBase64}`;
+              imageUrl = `data:image/png;base64,${imageBase64}`;
               break;
             }
           }
           
           if (!imageUrl) {
-            imageError = 'Gemini did not return an image. The model may have returned text instead. Try a different prompt.';
+            imageError = 'Gemini did not return an image. Try a different prompt.';
           }
         } else if (imageProvider === 'gemini-imagen' && userGeminiKey) {
-          // Use Gemini 2.0 Flash Experimental with user's API key
+          // Use Gemini 3 Pro Image Preview with user's API key
           const userAI = new GoogleGenAI({ apiKey: userGeminiKey });
           const imageResult = await userAI.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
-            contents: `Generate a distinct image based on this description: ${contentData.imagePrompt}`,
+            model: 'gemini-3-pro-image-preview',
+            contents: {
+              parts: [{ text: `${contentData.imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
+            },
             config: {
-              responseModalities: ['IMAGE']
+              imageConfig: {
+                aspectRatio: '1:1'
+              }
             }
           });
 
           // Extract image from response parts
           const parts = imageResult.candidates?.[0]?.content?.parts || [];
           for (const part of parts) {
-            if (part.inlineData) {
+            if (part.inlineData && part.inlineData.data) {
               imageBase64 = part.inlineData.data;
-              const mimeType = part.inlineData.mimeType || 'image/png';
-              imageUrl = `data:${mimeType};base64,${imageBase64}`;
+              imageUrl = `data:image/png;base64,${imageBase64}`;
               break;
             }
           }
