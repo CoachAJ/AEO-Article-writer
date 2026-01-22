@@ -116,39 +116,53 @@ Generate comprehensive, valuable content that positions the business as an autho
     if (contentData.imagePrompt && (imageProvider === 'gemini' || imageProvider === 'gemini-imagen' || openaiKey)) {
       try {
         if (imageProvider === 'gemini') {
-          // Use Imagen 3 with server key (free tier - rate limited)
-          const imageResult = await ai.models.generateImages({
-            model: 'imagen-3.0-generate-001',
-            prompt: contentData.imagePrompt,
+          // Use Gemini 2.0 Flash Experimental (free tier - native image generation)
+          const imageResult = await ai.models.generateContent({
+            model: 'gemini-2.0-flash-exp',
+            contents: `Generate a distinct image based on this description: ${contentData.imagePrompt}`,
             config: {
-              numberOfImages: 1,
-              aspectRatio: '1:1'
+              responseModalities: ['IMAGE']
             }
           });
 
-          if (imageResult.generatedImages && imageResult.generatedImages.length > 0) {
-            imageBase64 = imageResult.generatedImages[0].image.imageBytes;
-            imageUrl = `data:image/png;base64,${imageBase64}`;
-          } else {
-            imageError = 'Imagen did not return an image. Try a different prompt or wait (rate limited to ~1/min on free tier).';
+          // Extract image from response parts
+          const parts = imageResult.candidates?.[0]?.content?.parts || [];
+          for (const part of parts) {
+            if (part.inlineData) {
+              imageBase64 = part.inlineData.data;
+              const mimeType = part.inlineData.mimeType || 'image/png';
+              imageUrl = `data:${mimeType};base64,${imageBase64}`;
+              break;
+            }
+          }
+          
+          if (!imageUrl) {
+            imageError = 'Gemini did not return an image. The model may have returned text instead. Try a different prompt.';
           }
         } else if (imageProvider === 'gemini-imagen' && userGeminiKey) {
-          // Use Imagen 3 with user's API key (HD quality, higher limits)
+          // Use Gemini 2.0 Flash Experimental with user's API key
           const userAI = new GoogleGenAI({ apiKey: userGeminiKey });
-          const imageResult = await userAI.models.generateImages({
-            model: 'imagen-3.0-generate-001',
-            prompt: contentData.imagePrompt,
+          const imageResult = await userAI.models.generateContent({
+            model: 'gemini-2.0-flash-exp',
+            contents: `Generate a distinct image based on this description: ${contentData.imagePrompt}`,
             config: {
-              numberOfImages: 1,
-              aspectRatio: '1:1'
+              responseModalities: ['IMAGE']
             }
           });
 
-          if (imageResult.generatedImages && imageResult.generatedImages.length > 0) {
-            imageBase64 = imageResult.generatedImages[0].image.imageBytes;
-            imageUrl = `data:image/png;base64,${imageBase64}`;
-          } else {
-            imageError = 'Imagen 3 did not return an image. Try a different prompt.';
+          // Extract image from response parts
+          const parts = imageResult.candidates?.[0]?.content?.parts || [];
+          for (const part of parts) {
+            if (part.inlineData) {
+              imageBase64 = part.inlineData.data;
+              const mimeType = part.inlineData.mimeType || 'image/png';
+              imageUrl = `data:${mimeType};base64,${imageBase64}`;
+              break;
+            }
+          }
+          
+          if (!imageUrl) {
+            imageError = 'Gemini did not return an image. Try a different prompt.';
           }
         } else if (openaiKey) {
           // Use DALL-E 3
