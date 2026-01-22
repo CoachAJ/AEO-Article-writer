@@ -469,6 +469,76 @@ body {
   color: var(--text-primary);
 }
 
+/* Color Theme Selector */
+.color-theme-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-input);
+  border-radius: 8px;
+}
+
+.color-theme-selector label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.theme-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.theme-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.theme-btn:hover {
+  border-color: var(--primary);
+}
+
+.theme-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.theme-preview {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.dark-preview {
+  background: linear-gradient(135deg, #1a1a2e 50%, #e0e0e0 50%);
+}
+
+.light-preview {
+  background: linear-gradient(135deg, #ffffff 50%, #1a1a1a 50%);
+}
+
+.sepia-preview {
+  background: linear-gradient(135deg, #f4ecd8 50%, #5c4b37 50%);
+}
+
+.blue-preview {
+  background: linear-gradient(135deg, #e8f4fc 50%, #1e3a5f 50%);
+}
+
 /* Article Preview */
 .article-preview {
   background: var(--bg-input);
@@ -476,6 +546,73 @@ body {
   padding: 2rem;
   max-height: 600px;
   overflow-y: auto;
+  transition: all 0.3s ease;
+}
+
+/* Light Theme */
+.article-preview.theme-light {
+  background: #ffffff;
+  color: #1a1a1a;
+}
+
+.article-preview.theme-light h1,
+.article-preview.theme-light h2,
+.article-preview.theme-light h3,
+.article-preview.theme-light strong {
+  color: #1a1a1a;
+}
+
+.article-preview.theme-light p,
+.article-preview.theme-light li {
+  color: #333333;
+}
+
+.article-preview.theme-light a {
+  color: #2563eb;
+}
+
+/* Sepia Theme */
+.article-preview.theme-sepia {
+  background: #f4ecd8;
+  color: #5c4b37;
+}
+
+.article-preview.theme-sepia h1,
+.article-preview.theme-sepia h2,
+.article-preview.theme-sepia h3,
+.article-preview.theme-sepia strong {
+  color: #3d2e1f;
+}
+
+.article-preview.theme-sepia p,
+.article-preview.theme-sepia li {
+  color: #5c4b37;
+}
+
+.article-preview.theme-sepia a {
+  color: #8b5a2b;
+}
+
+/* Blue Theme */
+.article-preview.theme-blue {
+  background: #e8f4fc;
+  color: #1e3a5f;
+}
+
+.article-preview.theme-blue h1,
+.article-preview.theme-blue h2,
+.article-preview.theme-blue h3,
+.article-preview.theme-blue strong {
+  color: #0d2137;
+}
+
+.article-preview.theme-blue p,
+.article-preview.theme-blue li {
+  color: #1e3a5f;
+}
+
+.article-preview.theme-blue a {
+  color: #2563eb;
 }
 
 .article-preview h1 {

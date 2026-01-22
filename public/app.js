@@ -93,6 +93,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Initialize color theme selector
+  function initThemeSelector() {
+    const themeButtons = document.querySelectorAll('.theme-btn');
+    
+    themeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const theme = btn.dataset.theme;
+        
+        // Update active button
+        themeButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Update article preview theme
+        articlePreview.classList.remove('theme-dark', 'theme-light', 'theme-sepia', 'theme-blue');
+        if (theme !== 'dark') {
+          articlePreview.classList.add(`theme-${theme}`);
+        }
+      });
+    });
+  }
+
   // Show toast notification
   function showToast(message, duration = 2500) {
     toastMessage.textContent = message;
@@ -388,6 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCollapsibles();
   initImageProviderSelection();
   initTabs();
+  initThemeSelector();
   initCopyButtons();
   generateForm.addEventListener('submit', handleSubmit);
 
