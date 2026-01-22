@@ -239,6 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = {
       topic: formData.get('topic'),
       businessType: formData.get('businessType'),
+      contactName: formData.get('contactName'),
       websiteUrl: formData.get('websiteUrl'),
       bookingUrl: formData.get('bookingUrl'),
       phone: formData.get('phone'),
