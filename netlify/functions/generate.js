@@ -167,38 +167,27 @@ Generate comprehensive, valuable content that positions the business as an autho
     if (contentData.imagePrompt && (imageProvider === 'gemini' || imageProvider === 'gemini-imagen' || openaiKey)) {
       try {
         if (imageProvider === 'gemini') {
-          // Use Gemini 2.0 Flash (free tier supports image generation)
-          const imageModel = genAI.getGenerativeModel({ 
-            model: 'gemini-2.5-flash',
-            generationConfig: {
-              responseModalities: ['Text', 'Image']
+          // Use Imagen 3 with server key (free tier - rate limited)
+          const imagenModel = genAI.getGenerativeModel({ model: 'imagen-3.0-generate-001' });
+          
+          const imageResult = await imagenModel.generateImages({
+            prompt: contentData.imagePrompt,
+            config: {
+              numberOfImages: 1,
+              aspectRatio: '1:1'
             }
           });
-          
-          const imageResult = await imageModel.generateContent(
-            `Generate an image based on this description. Only output the image, no text: ${contentData.imagePrompt}`
-          );
 
-          const response = imageResult.response;
-          const parts = response.candidates?.[0]?.content?.parts || [];
-          
-          let imageBase64 = null;
-          for (const part of parts) {
-            if (part.inlineData) {
-              imageBase64 = part.inlineData.data;
-              const mimeType = part.inlineData.mimeType || 'image/png';
-              imageUrl = `data:${mimeType};base64,${imageBase64}`;
-              break;
-            }
-          }
-          
-          if (!imageUrl) {
-            imageError = 'Gemini did not return an image. Try a different prompt.';
+          if (imageResult.images && imageResult.images.length > 0) {
+            const imageBase64 = imageResult.images[0].image.imageBytes;
+            imageUrl = `data:image/png;base64,${imageBase64}`;
+          } else {
+            imageError = 'Imagen did not return an image. Try a different prompt or wait (rate limited to ~1/min on free tier).';
           }
         } else if (imageProvider === 'gemini-imagen' && userGeminiKey) {
-          // Use Gemini Imagen 3 with user's API key (HD quality)
+          // Use Imagen 3 with user's API key (HD quality, higher limits)
           const userGenAI = new GoogleGenerativeAI(userGeminiKey);
-          const imagenModel = userGenAI.getGenerativeModel({ model: 'imagen-3.0-generate-002' });
+          const imagenModel = userGenAI.getGenerativeModel({ model: 'imagen-3.0-generate-001' });
           
           const imageResult = await imagenModel.generateImages({
             prompt: contentData.imagePrompt,
