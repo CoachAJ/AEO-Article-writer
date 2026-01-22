@@ -253,6 +253,113 @@ function markdownToHtml(markdown) {
   return `<div class="article-content"><p>${html}</p></div>`;
 }
 
+// Image regeneration endpoint
+app.post('/api/regenerate-image', async (req, res) => {
+  try {
+    const { imagePrompt, imageProvider, openaiKey, userGeminiKey } = req.body;
+
+    if (!imagePrompt) {
+      return res.status(400).json({ error: 'Image prompt is required' });
+    }
+
+    if (!imageProvider || imageProvider === 'none') {
+      return res.status(400).json({ error: 'Please select an image provider' });
+    }
+
+    let imageUrl = null;
+    let imageError = null;
+
+    if (imageProvider === 'gemini') {
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(500).json({ error: 'Gemini API key not configured on server' });
+      }
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const imageResult = await ai.models.generateContent({
+        model: 'gemini-3-pro-image-preview',
+        contents: {
+          parts: [{ text: `${imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
+        },
+        config: {
+          imageConfig: {
+            aspectRatio: '1:1'
+          }
+        }
+      });
+
+      const parts = imageResult.candidates?.[0]?.content?.parts || [];
+      for (const part of parts) {
+        if (part.inlineData && part.inlineData.data) {
+          imageUrl = `data:image/png;base64,${part.inlineData.data}`;
+          break;
+        }
+      }
+      
+      if (!imageUrl) {
+        imageError = 'Gemini did not return an image. Try a different prompt.';
+      }
+    } else if (imageProvider === 'gemini-imagen' && userGeminiKey) {
+      const userAI = new GoogleGenAI({ apiKey: userGeminiKey });
+      const imageResult = await userAI.models.generateContent({
+        model: 'gemini-3-pro-image-preview',
+        contents: {
+          parts: [{ text: `${imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
+        },
+        config: {
+          imageConfig: {
+            aspectRatio: '1:1'
+          }
+        }
+      });
+
+      const parts = imageResult.candidates?.[0]?.content?.parts || [];
+      for (const part of parts) {
+        if (part.inlineData && part.inlineData.data) {
+          imageUrl = `data:image/png;base64,${part.inlineData.data}`;
+          break;
+        }
+      }
+      
+      if (!imageUrl) {
+        imageError = 'Gemini did not return an image. Try a different prompt.';
+      }
+    } else if (openaiKey) {
+      const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiKey}`
+        },
+        body: JSON.stringify({
+          model: 'dall-e-3',
+          prompt: imagePrompt,
+          n: 1,
+          size: '1024x1024',
+          quality: 'hd'
+        })
+      });
+
+      const imageData = await imageResponse.json();
+      if (imageData.error) {
+        imageError = imageData.error.message;
+      } else if (imageData.data && imageData.data[0]) {
+        imageUrl = imageData.data[0].url;
+      }
+    } else {
+      return res.status(400).json({ error: 'No valid image provider configuration' });
+    }
+
+    if (imageError) {
+      return res.status(400).json({ error: imageError });
+    }
+
+    res.json({ success: true, imageUrl });
+
+  } catch (error) {
+    console.error('Image regeneration error:', error);
+    res.status(500).json({ error: error.message || 'Failed to regenerate image' });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', geminiConfigured: !!process.env.GEMINI_API_KEY });

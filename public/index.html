@@ -271,8 +271,15 @@
                 <img id="generatedImage" src="" alt="Generated article image" style="display: none;">
               </div>
               <div class="image-prompt" id="imagePromptContainer">
-                <h4>Image Prompt Used:</h4>
-                <p id="imagePromptText"></p>
+                <h4>Image Prompt:</h4>
+                <textarea class="image-prompt-textarea" id="imagePromptText" rows="4" placeholder="Edit the prompt and click Regenerate Image..."></textarea>
+                <button class="action-btn regenerate-btn" id="regenerateImage">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                  </svg>
+                  Regenerate Image
+                </button>
               </div>
               <button class="action-btn" id="downloadImage" style="display: none;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

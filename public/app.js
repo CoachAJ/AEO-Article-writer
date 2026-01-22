@@ -150,6 +150,82 @@ document.addEventListener('DOMContentLoaded', () => {
         downloadImage(generatedData.imageUrl);
       }
     });
+
+    // Regenerate image button
+    document.getElementById('regenerateImage').addEventListener('click', handleRegenerateImage);
+  }
+
+  // Handle image regeneration
+  async function handleRegenerateImage() {
+    const regenerateBtn = document.getElementById('regenerateImage');
+    const newPrompt = imagePromptText.value.trim();
+    
+    if (!newPrompt) {
+      showToast('Please enter an image prompt', 3000);
+      return;
+    }
+
+    // Get current image provider settings from form
+    const formData = new FormData(generateForm);
+    const imageProvider = formData.get('imageProvider');
+    
+    if (!imageProvider || imageProvider === 'none') {
+      showToast('Please select an image provider in the form', 3000);
+      return;
+    }
+
+    // Disable button and show loading state
+    regenerateBtn.disabled = true;
+    regenerateBtn.innerHTML = `
+      <svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+      </svg>
+      Generating...
+    `;
+
+    try {
+      const response = await fetch('/api/regenerate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imagePrompt: newPrompt,
+          imageProvider: imageProvider,
+          openaiKey: imageProvider === 'openai' ? formData.get('openaiKey') : null,
+          userGeminiKey: imageProvider === 'gemini-imagen' ? formData.get('userGeminiKey') : null
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to regenerate image');
+      }
+
+      if (result.imageUrl) {
+        generatedData.imageUrl = result.imageUrl;
+        generatedData.imagePrompt = newPrompt;
+        generatedImage.src = result.imageUrl;
+        generatedImage.style.display = 'block';
+        noImage.style.display = 'none';
+        downloadImageBtn.style.display = 'flex';
+        showToast('Image regenerated successfully!', 3000);
+      } else {
+        throw new Error('No image returned');
+      }
+
+    } catch (error) {
+      console.error('Regeneration error:', error);
+      showToast(`Error: ${error.message}`, 4000);
+    } finally {
+      regenerateBtn.disabled = false;
+      regenerateBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        Regenerate Image
+      `;
+    }
   }
 
   // Download image
@@ -207,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
     linkedinCopy.value = data.linkedinCopy || '';
 
     // Image tab
-    imagePromptText.textContent = data.imagePrompt || 'No image prompt generated.';
+    imagePromptText.value = data.imagePrompt || 'No image prompt generated.';
 
     if (data.imageUrl) {
       generatedImage.src = data.imageUrl;
