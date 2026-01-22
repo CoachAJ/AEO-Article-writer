@@ -1,4 +1,4 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai');
 
 // Simple markdown to HTML converter
 function markdownToHtml(markdown) {
@@ -84,9 +84,8 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Initialize Gemini AI
-    const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    // Initialize Google GenAI client
+    const ai = new GoogleGenAI({ apiKey: geminiKey });
 
     const isHealthTopic = /health|medical|disease|nutrition|supplement|vitamin|mineral|wellness|diet|symptom|treatment|cure|doctor|patient|body|immune|chronic|deficien/i.test(topic + ' ' + businessType);
 
@@ -131,15 +130,17 @@ ${phone ? `Phone Number: ${phone}` : ''}
 
 Generate comprehensive, valuable content that positions the business as an authority in their field.`;
 
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }],
-      generationConfig: {
+    // Step 1: Generate text content with Gemini
+    const result = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: systemPrompt + '\n\n' + userPrompt,
+      config: {
         temperature: 0.7,
         maxOutputTokens: 4096,
       }
     });
 
-    const responseText = result.response.text();
+    const responseText = result.text;
     
     // Parse the JSON response
     let contentData;
@@ -168,9 +169,8 @@ Generate comprehensive, valuable content that positions the business as an autho
       try {
         if (imageProvider === 'gemini') {
           // Use Imagen 3 with server key (free tier - rate limited)
-          const imagenModel = genAI.getGenerativeModel({ model: 'imagen-3.0-generate-001' });
-          
-          const imageResult = await imagenModel.generateImages({
+          const imageResult = await ai.models.generateImages({
+            model: 'imagen-3.0-generate-001',
             prompt: contentData.imagePrompt,
             config: {
               numberOfImages: 1,
@@ -178,18 +178,17 @@ Generate comprehensive, valuable content that positions the business as an autho
             }
           });
 
-          if (imageResult.images && imageResult.images.length > 0) {
-            const imageBase64 = imageResult.images[0].image.imageBytes;
+          if (imageResult.generatedImages && imageResult.generatedImages.length > 0) {
+            const imageBase64 = imageResult.generatedImages[0].image.imageBytes;
             imageUrl = `data:image/png;base64,${imageBase64}`;
           } else {
             imageError = 'Imagen did not return an image. Try a different prompt or wait (rate limited to ~1/min on free tier).';
           }
         } else if (imageProvider === 'gemini-imagen' && userGeminiKey) {
           // Use Imagen 3 with user's API key (HD quality, higher limits)
-          const userGenAI = new GoogleGenerativeAI(userGeminiKey);
-          const imagenModel = userGenAI.getGenerativeModel({ model: 'imagen-3.0-generate-001' });
-          
-          const imageResult = await imagenModel.generateImages({
+          const userAI = new GoogleGenAI({ apiKey: userGeminiKey });
+          const imageResult = await userAI.models.generateImages({
+            model: 'imagen-3.0-generate-001',
             prompt: contentData.imagePrompt,
             config: {
               numberOfImages: 1,
@@ -197,8 +196,8 @@ Generate comprehensive, valuable content that positions the business as an autho
             }
           });
 
-          if (imageResult.images && imageResult.images.length > 0) {
-            const imageBase64 = imageResult.images[0].image.imageBytes;
+          if (imageResult.generatedImages && imageResult.generatedImages.length > 0) {
+            const imageBase64 = imageResult.generatedImages[0].image.imageBytes;
             imageUrl = `data:image/png;base64,${imageBase64}`;
           } else {
             imageError = 'Gemini Imagen 3 did not return an image. Try a different prompt.';
