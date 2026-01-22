@@ -23,6 +23,7 @@ app.post('/api/generate', async (req, res) => {
       websiteUrl, 
       bookingUrl, 
       phone,
+      ygyId,
       openaiKey,
       userGeminiKey,
       imageProvider 
@@ -41,6 +42,7 @@ app.post('/api/generate', async (req, res) => {
 
     const isHealthTopic = /health|medical|disease|nutrition|supplement|vitamin|mineral|wellness|diet|symptom|treatment|cure|doctor|patient|body|immune|chronic|deficien/i.test(topic + ' ' + businessType);
 
+    const triangleLink = ygyId ? `https://triangleofdisease.com/?uid=${ygyId}` : null;
     const healthGuidance = isHealthTopic ? `
 IMPORTANT - For health-related content, follow these principles from the Triangle of Disease framework:
 - Focus on nutritional deficiencies as root causes of health issues
@@ -50,7 +52,7 @@ IMPORTANT - For health-related content, follow these principles from the Triangl
 - Avoid making direct medical claims; instead focus on nutritional support
 - Reference the connection between specific nutrients and body systems
 - Connect symptoms to potential mineral deficiencies
-- Do NOT include links to triangleofdisease.com or iwhhealthhub.com in the generated content
+${triangleLink ? `- Include a reference to learn more about the Triangle of Disease with this exact link: [Learn more about the Triangle of Disease](${triangleLink})` : ''}
 ` : '';
 
     const systemPrompt = `You are an AEO (Answer Engine Optimization) expert. Generate content structured for AI search engines like ChatGPT, Perplexity, and Google AI Overviews.

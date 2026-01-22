@@ -242,6 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
       websiteUrl: formData.get('websiteUrl'),
       bookingUrl: formData.get('bookingUrl'),
       phone: formData.get('phone'),
+      ygyId: formData.get('ygyId'),
       imageProvider: imageProvider !== 'none' ? imageProvider : null,
       openaiKey: imageProvider === 'openai' ? formData.get('openaiKey') : null,
       userGeminiKey: imageProvider === 'gemini-imagen' ? formData.get('userGeminiKey') : null
