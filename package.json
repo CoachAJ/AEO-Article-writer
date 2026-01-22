@@ -1,0 +1,19 @@
+{
+  "name": "aeo-content-studio",
+  "version": "1.0.0",
+  "description": "AEO Content Studio - Generate publishing kits with AI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "@google/generative-ai": "^0.21.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
