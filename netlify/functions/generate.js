@@ -90,14 +90,15 @@ exports.handler = async (event, context) => {
     const isHealthTopic = /health|medical|disease|nutrition|supplement|vitamin|mineral|wellness|diet|symptom|treatment|cure|doctor|patient|body|immune|chronic|deficien/i.test(topic + ' ' + businessType);
 
     const healthGuidance = isHealthTopic ? `
-IMPORTANT - For health-related content, follow these principles from the Triangle of Disease framework (triangleofdisease.com):
+IMPORTANT - For health-related content, follow these principles from the Triangle of Disease framework:
 - Focus on nutritional deficiencies as root causes of health issues
 - Emphasize the importance of the 90 essential nutrients (60 minerals, 16 vitamins, 12 amino acids, 2-3 essential fatty acids)
 - Reference how mineral depletion in soil affects food nutrition
 - Discuss how the body can heal itself when given proper nutrition
 - Avoid making direct medical claims; instead focus on nutritional support
 - Reference the connection between specific nutrients and body systems
-- Use the approach from iwhhealthhub.com/minerals - connecting symptoms to potential mineral deficiencies
+- Connect symptoms to potential mineral deficiencies
+- Do NOT include links to triangleofdisease.com or iwhhealthhub.com in the generated content
 ` : '';
 
     const systemPrompt = `You are an AEO (Answer Engine Optimization) expert. Generate content structured for AI search engines like ChatGPT, Perplexity, and Google AI Overviews.
@@ -166,7 +167,7 @@ Generate comprehensive, valuable content that positions the business as an autho
         if (imageProvider === 'gemini') {
           // Use Gemini 2.0 Flash (free tier supports image generation)
           const imageModel = genAI.getGenerativeModel({ 
-            model: 'gemini-2.0-flash-preview-image-generation',
+            model: 'gemini-2.5-flash',
             generationConfig: {
               responseModalities: ['Text', 'Image']
             }
