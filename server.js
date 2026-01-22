@@ -64,7 +64,7 @@ Your content MUST follow these AEO principles:
 You must output ONLY a valid JSON object (no markdown code blocks, no extra text) with these exact keys:
 
 {
-  "articleMarkdown": "The full blog post in Markdown format. Include a compelling H1 title, multiple H2 sections with bolded direct answers, lists, and actionable content. ${websiteUrl || bookingUrl || phone ? `End with a 'Contact Us' H2 section containing: ${websiteUrl ? `Website: ${websiteUrl}` : ''} ${bookingUrl ? `Book a consultation: ${bookingUrl}` : ''} ${phone ? `Phone: ${phone}` : ''}` : 'Do NOT include a Contact Us section.'}",
+  "articleMarkdown": "The full blog post in Markdown format. Include a compelling H1 title, multiple H2 sections with bolded direct answers, lists, and actionable content. ${websiteUrl || bookingUrl || phone ? `End with a '## Contact Us' section. Format URLs as clickable markdown links like [Visit Our Website](url). Include: ${websiteUrl ? `Website link: [Visit Our Website](${websiteUrl})` : ''} ${bookingUrl ? `Booking link: [Schedule a Consultation](${bookingUrl})` : ''} ${phone ? `Phone: ${phone}` : ''}` : 'Do NOT include a Contact Us section.'}",
   "imagePrompt": "A detailed, photographic prompt for generating an image relevant to the article. Describe the scene, lighting, style, and key visual elements. Make it professional and suitable for a business blog.",
   "mediumCopy": "A formatted block for Medium with:\\n\\nTITLE: [Compelling title]\\n\\nSUBTITLE: [Engaging subtitle that hooks readers]\\n\\n[First 2-3 paragraphs of the article, optimized for Medium's audience]",
   "linkedinCopy": "A short, engaging LinkedIn post (under 1300 characters) summarizing the key insights. Include:\\n- 2-3 relevant emojis\\n- A hook in the first line\\n- 3-5 bullet points of key takeaways\\n- A call to action\\n- 5-7 relevant hashtags"
@@ -116,7 +116,7 @@ Generate comprehensive, valuable content that positions the business as an autho
         if (imageProvider === 'gemini') {
           // Use Gemini 2.0 Flash (free tier supports image generation)
           const imageModel = genAI.getGenerativeModel({ 
-            model: 'gemini-2.0-flash-exp',
+            model: 'gemini-2.0-flash-preview-image-generation',
             generationConfig: {
               responseModalities: ['Text', 'Image']
             }
