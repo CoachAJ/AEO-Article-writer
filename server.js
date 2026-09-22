@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const { GoogleGenAI } = require('@google/genai');
 const { createGeminiGenerator, GeminiUnavailableError } = require('./gemini-retry');
+const { contentGenerationConfig, parseContentResponse } = require('./content-response');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -88,28 +89,20 @@ Generate comprehensive, valuable content that positions the business as an autho
     const result = await generateContent(ai, {
       model: 'gemini-3.6-flash',
       contents: systemPrompt + '\n\n' + userPrompt,
-      config: {
-        temperature: 0.7,
-        maxOutputTokens: 4096,
-      }
+      config: contentGenerationConfig
     });
 
-    const responseText = result.text;
-    
     // Parse the JSON response
     let contentData;
     try {
       // Try to extract JSON from the response (handle potential markdown code blocks)
-      let jsonStr = responseText;
-      const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1];
-      }
-      contentData = JSON.parse(jsonStr.trim());
+      contentData = parseContentResponse(result);
     } catch (parseError) {
-      console.error('JSON Parse Error:', parseError);
-      console.error('Raw response:', responseText);
-      return res.status(500).json({ error: 'Failed to parse AI response. Please try again.' });
+      console.error('AI response rejected:', {
+        finishReason: result?.candidates?.[0]?.finishReason,
+        blockReason: result?.promptFeedback?.blockReason
+      });
+      return res.status(502).json({ error: parseError.message });
     }
 
     // Step 2: Generate image
@@ -219,7 +212,7 @@ Generate comprehensive, valuable content that positions the business as an autho
 
   } catch (error) {
     console.error('Generation error:', error);
-    res.status(error instanceof GeminiUnavailableError ? 503 : 500).json({ error: error.message || 'An error occurred during generation' });
+    res.status(error instanceof GeminiUnavailableError ? error.statusCode : 500).json({ error: error.message || 'An error occurred during generation' });
   }
 });
 
@@ -359,7 +352,7 @@ app.post('/api/regenerate-image', async (req, res) => {
 
   } catch (error) {
     console.error('Image regeneration error:', error);
-    res.status(error instanceof GeminiUnavailableError ? 503 : 500).json({ error: error.message || 'Failed to regenerate image' });
+    res.status(error instanceof GeminiUnavailableError ? error.statusCode : 500).json({ error: error.message || 'Failed to regenerate image' });
   }
 });
 

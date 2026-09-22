@@ -1,5 +1,6 @@
 const { GoogleGenAI } = require('@google/genai');
 const { createGeminiGenerator, GeminiUnavailableError } = require('../../gemini-retry');
+const { contentGenerationConfig, parseContentResponse } = require('../../content-response');
 
 // Simple markdown to HTML converter
 function markdownToHtml(markdown) {
@@ -138,30 +139,22 @@ Generate comprehensive, valuable content that positions the business as an autho
     const result = await generateContent(ai, {
       model: 'gemini-3.6-flash',
       contents: systemPrompt + '\n\n' + userPrompt,
-      config: {
-        temperature: 0.7,
-        maxOutputTokens: 4096,
-      }
+      config: contentGenerationConfig
     });
 
-    const responseText = result.text;
-    
     // Parse the JSON response
     let contentData;
     try {
-      let jsonStr = responseText;
-      const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1];
-      }
-      contentData = JSON.parse(jsonStr.trim());
+      contentData = parseContentResponse(result);
     } catch (parseError) {
-      console.error('JSON Parse Error:', parseError);
-      console.error('Raw response:', responseText);
+      console.error('AI response rejected:', {
+        finishReason: result?.candidates?.[0]?.finishReason,
+        blockReason: result?.promptFeedback?.blockReason
+      });
       return {
-        statusCode: 500,
+        statusCode: 502,
         headers,
-        body: JSON.stringify({ error: 'Failed to parse AI response. Please try again.' })
+        body: JSON.stringify({ error: parseError.message })
       };
     }
 
@@ -276,7 +269,7 @@ Generate comprehensive, valuable content that positions the business as an autho
   } catch (error) {
     console.error('Generation error:', error);
     return {
-      statusCode: error instanceof GeminiUnavailableError ? 503 : 500,
+      statusCode: error instanceof GeminiUnavailableError ? error.statusCode : 500,
       headers,
       body: JSON.stringify({ error: error.message || 'An error occurred during generation' })
     };

@@ -150,7 +150,7 @@ exports.handler = async (event, context) => {
   } catch (error) {
     console.error('Image regeneration error:', error);
     return {
-      statusCode: error instanceof GeminiUnavailableError ? 503 : 500,
+      statusCode: error instanceof GeminiUnavailableError ? error.statusCode : 500,
       headers,
       body: JSON.stringify({ error: error.message || 'Failed to regenerate image' })
     };
