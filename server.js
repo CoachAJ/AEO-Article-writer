@@ -84,7 +84,7 @@ Generate comprehensive, valuable content that positions the business as an autho
 
     // Step 1: Generate text content with Gemini
     const result = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.6-flash',
       contents: systemPrompt + '\n\n' + userPrompt,
       config: {
         temperature: 0.7,
