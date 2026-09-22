@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { GoogleGenAI } = require('@google/genai');
+const { createGeminiGenerator, GeminiUnavailableError } = require('./gemini-retry');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Main generation endpoint
 app.post('/api/generate', async (req, res) => {
+  const generateContent = createGeminiGenerator();
   try {
     const { 
       topic, 
@@ -83,7 +85,7 @@ ${phone ? `Phone Number: ${phone}` : ''}
 Generate comprehensive, valuable content that positions the business as an authority in their field.`;
 
     // Step 1: Generate text content with Gemini
-    const result = await ai.models.generateContent({
+    const result = await generateContent(ai, {
       model: 'gemini-3.6-flash',
       contents: systemPrompt + '\n\n' + userPrompt,
       config: {
@@ -119,7 +121,7 @@ Generate comprehensive, valuable content that positions the business as an autho
       try {
         if (imageProvider === 'gemini') {
           // Use Gemini 3 Pro Image Preview (free tier image generation)
-          const imageResult = await ai.models.generateContent({
+          const imageResult = await generateContent(ai, {
             model: 'gemini-3-pro-image-preview',
             contents: {
               parts: [{ text: `${contentData.imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
@@ -147,7 +149,7 @@ Generate comprehensive, valuable content that positions the business as an autho
         } else if (imageProvider === 'gemini-imagen' && userGeminiKey) {
           // Use Gemini 3 Pro Image Preview with user's API key
           const userAI = new GoogleGenAI({ apiKey: userGeminiKey });
-          const imageResult = await userAI.models.generateContent({
+          const imageResult = await generateContent(userAI, {
             model: 'gemini-3-pro-image-preview',
             contents: {
               parts: [{ text: `${contentData.imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
@@ -217,7 +219,7 @@ Generate comprehensive, valuable content that positions the business as an autho
 
   } catch (error) {
     console.error('Generation error:', error);
-    res.status(500).json({ error: error.message || 'An error occurred during generation' });
+    res.status(error instanceof GeminiUnavailableError ? 503 : 500).json({ error: error.message || 'An error occurred during generation' });
   }
 });
 
@@ -255,6 +257,7 @@ function markdownToHtml(markdown) {
 
 // Image regeneration endpoint
 app.post('/api/regenerate-image', async (req, res) => {
+  const generateContent = createGeminiGenerator();
   try {
     const { imagePrompt, imageProvider, openaiKey, userGeminiKey } = req.body;
 
@@ -274,7 +277,7 @@ app.post('/api/regenerate-image', async (req, res) => {
         return res.status(500).json({ error: 'Gemini API key not configured on server' });
       }
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const imageResult = await ai.models.generateContent({
+      const imageResult = await generateContent(ai, {
         model: 'gemini-3-pro-image-preview',
         contents: {
           parts: [{ text: `${imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
@@ -299,7 +302,7 @@ app.post('/api/regenerate-image', async (req, res) => {
       }
     } else if (imageProvider === 'gemini-imagen' && userGeminiKey) {
       const userAI = new GoogleGenAI({ apiKey: userGeminiKey });
-      const imageResult = await userAI.models.generateContent({
+      const imageResult = await generateContent(userAI, {
         model: 'gemini-3-pro-image-preview',
         contents: {
           parts: [{ text: `${imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
@@ -356,7 +359,7 @@ app.post('/api/regenerate-image', async (req, res) => {
 
   } catch (error) {
     console.error('Image regeneration error:', error);
-    res.status(500).json({ error: error.message || 'Failed to regenerate image' });
+    res.status(error instanceof GeminiUnavailableError ? 503 : 500).json({ error: error.message || 'Failed to regenerate image' });
   }
 });
 

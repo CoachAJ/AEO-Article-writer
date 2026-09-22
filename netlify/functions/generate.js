@@ -1,4 +1,5 @@
 const { GoogleGenAI } = require('@google/genai');
+const { createGeminiGenerator, GeminiUnavailableError } = require('../../gemini-retry');
 
 // Simple markdown to HTML converter
 function markdownToHtml(markdown) {
@@ -33,6 +34,7 @@ function markdownToHtml(markdown) {
 }
 
 exports.handler = async (event, context) => {
+  const generateContent = createGeminiGenerator(context);
   // Handle CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -133,7 +135,7 @@ ${phone ? `Phone Number: ${phone}` : ''}
 Generate comprehensive, valuable content that positions the business as an authority in their field.`;
 
     // Step 1: Generate text content with Gemini
-    const result = await ai.models.generateContent({
+    const result = await generateContent(ai, {
       model: 'gemini-3.6-flash',
       contents: systemPrompt + '\n\n' + userPrompt,
       config: {
@@ -171,7 +173,7 @@ Generate comprehensive, valuable content that positions the business as an autho
       try {
         if (imageProvider === 'gemini') {
           // Use Gemini 3 Pro Image Preview (free tier image generation)
-          const imageResult = await ai.models.generateContent({
+          const imageResult = await generateContent(ai, {
             model: 'gemini-3-pro-image-preview',
             contents: {
               parts: [{ text: `${contentData.imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
@@ -199,7 +201,7 @@ Generate comprehensive, valuable content that positions the business as an autho
         } else if (imageProvider === 'gemini-imagen' && userGeminiKey) {
           // Use Gemini 3 Pro Image Preview with user's API key
           const userAI = new GoogleGenAI({ apiKey: userGeminiKey });
-          const imageResult = await userAI.models.generateContent({
+          const imageResult = await generateContent(userAI, {
             model: 'gemini-3-pro-image-preview',
             contents: {
               parts: [{ text: `${contentData.imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
@@ -274,7 +276,7 @@ Generate comprehensive, valuable content that positions the business as an autho
   } catch (error) {
     console.error('Generation error:', error);
     return {
-      statusCode: 500,
+      statusCode: error instanceof GeminiUnavailableError ? 503 : 500,
       headers,
       body: JSON.stringify({ error: error.message || 'An error occurred during generation' })
     };

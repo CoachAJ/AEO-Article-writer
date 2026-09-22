@@ -1,4 +1,5 @@
 const { GoogleGenAI } = require('@google/genai');
+const { createGeminiGenerator, GeminiUnavailableError } = require('../../gemini-retry');
 
 const headers = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +9,7 @@ const headers = {
 };
 
 exports.handler = async (event, context) => {
+  const generateContent = createGeminiGenerator(context);
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
@@ -53,7 +55,7 @@ exports.handler = async (event, context) => {
       }
       
       const ai = new GoogleGenAI({ apiKey: geminiKey });
-      const imageResult = await ai.models.generateContent({
+      const imageResult = await generateContent(ai, {
         model: 'gemini-3-pro-image-preview',
         contents: {
           parts: [{ text: `${imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
@@ -78,7 +80,7 @@ exports.handler = async (event, context) => {
       }
     } else if (imageProvider === 'gemini-imagen' && userGeminiKey) {
       const userAI = new GoogleGenAI({ apiKey: userGeminiKey });
-      const imageResult = await userAI.models.generateContent({
+      const imageResult = await generateContent(userAI, {
         model: 'gemini-3-pro-image-preview',
         contents: {
           parts: [{ text: `${imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
@@ -148,7 +150,7 @@ exports.handler = async (event, context) => {
   } catch (error) {
     console.error('Image regeneration error:', error);
     return {
-      statusCode: 500,
+      statusCode: error instanceof GeminiUnavailableError ? 503 : 500,
       headers,
       body: JSON.stringify({ error: error.message || 'Failed to regenerate image' })
     };
