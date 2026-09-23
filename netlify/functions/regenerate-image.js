@@ -1,5 +1,6 @@
 const { GoogleGenAI } = require('@google/genai');
 const { createGeminiGenerator, GeminiUnavailableError } = require('../../gemini-retry');
+const { generateArticleImage } = require('../../image-service');
 
 const headers = {
   'Access-Control-Allow-Origin': '*',
@@ -41,97 +42,17 @@ exports.handler = async (event, context) => {
       };
     }
 
-    let imageUrl = null;
-    let imageError = null;
+    const geminiKey = userGeminiKey || process.env.GEMINI_API_KEY;
+    const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : null;
 
-    if (imageProvider === 'gemini') {
-      const geminiKey = userGeminiKey || process.env.GEMINI_API_KEY;
-      if (!geminiKey) {
-        return {
-          statusCode: 400,
-          headers,
-          body: JSON.stringify({ error: 'Gemini API key not configured. Please enter your Gemini API key in the form or configure GEMINI_API_KEY on the server.' })
-        };
-      }
-      
-      const ai = new GoogleGenAI({ apiKey: geminiKey });
-      const imageResult = await generateContent(ai, {
-        model: 'gemini-3-pro-image-preview',
-        contents: {
-          parts: [{ text: `${imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
-        },
-        config: {
-          imageConfig: {
-            aspectRatio: '1:1'
-          }
-        }
-      });
-
-      const parts = imageResult.candidates?.[0]?.content?.parts || [];
-      for (const part of parts) {
-        if (part.inlineData && part.inlineData.data) {
-          imageUrl = `data:image/png;base64,${part.inlineData.data}`;
-          break;
-        }
-      }
-      
-      if (!imageUrl) {
-        imageError = 'Gemini did not return an image. Try a different prompt.';
-      }
-    } else if (imageProvider === 'gemini-imagen' && userGeminiKey) {
-      const userAI = new GoogleGenAI({ apiKey: userGeminiKey });
-      const imageResult = await generateContent(userAI, {
-        model: 'gemini-3-pro-image-preview',
-        contents: {
-          parts: [{ text: `${imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
-        },
-        config: {
-          imageConfig: {
-            aspectRatio: '1:1'
-          }
-        }
-      });
-
-      const parts = imageResult.candidates?.[0]?.content?.parts || [];
-      for (const part of parts) {
-        if (part.inlineData && part.inlineData.data) {
-          imageUrl = `data:image/png;base64,${part.inlineData.data}`;
-          break;
-        }
-      }
-      
-      if (!imageUrl) {
-        imageError = 'Gemini did not return an image. Try a different prompt.';
-      }
-    } else if (openaiKey) {
-      const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openaiKey}`
-        },
-        body: JSON.stringify({
-          model: 'dall-e-3',
-          prompt: imagePrompt,
-          n: 1,
-          size: '1024x1024',
-          quality: 'hd'
-        })
-      });
-
-      const imageData = await imageResponse.json();
-      if (imageData.error) {
-        imageError = imageData.error.message;
-      } else if (imageData.data && imageData.data[0]) {
-        imageUrl = imageData.data[0].url;
-      }
-    } else {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'No valid image provider configuration' })
-      };
-    }
+    const { imageUrl, imageError } = await generateArticleImage({
+      prompt: imagePrompt,
+      imageProvider,
+      ai,
+      userGeminiKey,
+      openaiKey,
+      generateContent
+    });
 
     if (imageError) {
       return {

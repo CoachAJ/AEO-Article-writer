@@ -1,6 +1,7 @@
 const { GoogleGenAI } = require('@google/genai');
 const { createGeminiGenerator, GeminiUnavailableError } = require('../../gemini-retry');
 const { contentGenerationConfig, parseContentResponse } = require('../../content-response');
+const { generateArticleImage } = require('../../image-service');
 
 // Simple markdown to HTML converter
 function markdownToHtml(markdown) {
@@ -136,11 +137,24 @@ ${phone ? `Phone Number: ${phone}` : ''}
 Generate comprehensive, valuable content that positions the business as an authority in their field.`;
 
     // Step 1: Generate text content with Gemini
-    const result = await generateContent(ai, {
-      model: 'gemini-3.6-flash',
-      contents: systemPrompt + '\n\n' + userPrompt,
-      config: contentGenerationConfig
-    });
+    let result;
+    try {
+      result = await generateContent(ai, {
+        model: 'gemini-3.5-flash-lite',
+        contents: systemPrompt + '\n\n' + userPrompt,
+        config: contentGenerationConfig
+      });
+    } catch (err) {
+      if (err?.upstreamStatus === 503 || err?.status === 503 || err?.upstreamStatus === 404 || err?.status === 404) {
+        result = await generateContent(ai, {
+          model: 'gemini-3.6-flash',
+          contents: systemPrompt + '\n\n' + userPrompt,
+          config: contentGenerationConfig
+        });
+      } else {
+        throw err;
+      }
+    }
 
     // Parse the JSON response
     let contentData;
@@ -159,96 +173,14 @@ Generate comprehensive, valuable content that positions the business as an autho
     }
 
     // Step 2: Generate image
-    let imageUrl = null;
-    let imageError = null;
-
-    if (contentData.imagePrompt && (imageProvider === 'gemini' || imageProvider === 'gemini-imagen' || openaiKey)) {
-      try {
-        if (imageProvider === 'gemini') {
-          // Use Gemini 3 Pro Image Preview (free tier image generation)
-          const imageResult = await generateContent(ai, {
-            model: 'gemini-3-pro-image-preview',
-            contents: {
-              parts: [{ text: `${contentData.imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
-            },
-            config: {
-              imageConfig: {
-                aspectRatio: '1:1'
-              }
-            }
-          });
-
-          // Extract image from response parts
-          const parts = imageResult.candidates?.[0]?.content?.parts || [];
-          for (const part of parts) {
-            if (part.inlineData && part.inlineData.data) {
-              const imageBase64 = part.inlineData.data;
-              imageUrl = `data:image/png;base64,${imageBase64}`;
-              break;
-            }
-          }
-          
-          if (!imageUrl) {
-            imageError = 'Gemini did not return an image. Try a different prompt.';
-          }
-        } else if (imageProvider === 'gemini-imagen' && userGeminiKey) {
-          // Use Gemini 3 Pro Image Preview with user's API key
-          const userAI = new GoogleGenAI({ apiKey: userGeminiKey });
-          const imageResult = await generateContent(userAI, {
-            model: 'gemini-3-pro-image-preview',
-            contents: {
-              parts: [{ text: `${contentData.imagePrompt}. The style should be professional, high-quality, suitable for a business blog.` }]
-            },
-            config: {
-              imageConfig: {
-                aspectRatio: '1:1'
-              }
-            }
-          });
-
-          // Extract image from response parts
-          const parts = imageResult.candidates?.[0]?.content?.parts || [];
-          for (const part of parts) {
-            if (part.inlineData && part.inlineData.data) {
-              const imageBase64 = part.inlineData.data;
-              imageUrl = `data:image/png;base64,${imageBase64}`;
-              break;
-            }
-          }
-          
-          if (!imageUrl) {
-            imageError = 'Gemini did not return an image. Try a different prompt.';
-          }
-        } else if (openaiKey) {
-          // Use DALL-E 3
-          const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${openaiKey}`
-            },
-            body: JSON.stringify({
-              model: 'dall-e-3',
-              prompt: contentData.imagePrompt,
-              n: 1,
-              size: '1024x1024',
-              quality: 'standard'
-            })
-          });
-
-          const imageData = await imageResponse.json();
-          
-          if (imageData.error) {
-            imageError = imageData.error.message;
-          } else if (imageData.data && imageData.data[0]) {
-            imageUrl = imageData.data[0].url;
-          }
-        }
-      } catch (imgErr) {
-        console.error('Image generation error:', imgErr);
-        imageError = `Failed to generate image: ${imgErr.message}`;
-      }
-    }
+    const { imageUrl, imageError } = await generateArticleImage({
+      prompt: contentData.imagePrompt,
+      imageProvider,
+      ai,
+      userGeminiKey,
+      openaiKey,
+      generateContent
+    });
 
     // Return combined response
     return {

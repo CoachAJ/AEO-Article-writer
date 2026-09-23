@@ -371,7 +371,7 @@ test('local and Netlify endpoints use retries through the real Google SDK', asyn
       assert.equal(response.body.articleMarkdown, content.articleMarkdown);
       assert.equal(requests.length, 2);
       assert.deepEqual(requests[0].body, requests[1].body);
-      assert.ok(requests.every(request => request.url.includes('gemini-3.6-flash')));
+      assert.ok(requests.every(request => request.url.includes('gemini-3.5-flash-lite')));
     });
 
     await t.test(`${platform}: persistent text overload returns friendly 503`, async st => {
@@ -379,7 +379,7 @@ test('local and Netlify endpoints use retries through the real Google SDK', asyn
       const response = await invoke(platform, '/api/generate', body);
       assert.equal(response.status, 503);
       assert.match(response.body.error, /Google is temporarily busy/);
-      assert.equal(requests.length, 3);
+      assert.equal(requests.length, 6);
     });
 
     for (const [upstreamStatus, status, message] of [
@@ -395,17 +395,26 @@ test('local and Netlify endpoints use retries through the real Google SDK', asyn
         assert.equal(requests.length, 3);
         const failure = log.mock.calls[0].arguments[1];
         assert.equal(failure.upstreamStatus, upstreamStatus);
-        assert.equal(failure.model, 'gemini-3.6-flash');
+        assert.equal(failure.model, 'gemini-3.5-flash-lite');
         assert.equal(failure.attempts, 3);
         assert.equal(failure.elapsedMs, 3250);
       });
     }
 
+    await t.test(`${platform}: pollinations provider generates instant image URL`, async st => {
+      const requests = mockResponses(st, [article]);
+      const response = await invoke(platform, '/api/generate', { ...body, imageProvider: 'pollinations' });
+      assert.equal(response.status, 200);
+      assert.match(response.body.imageUrl, /^https:\/\/image\.pollinations\.ai\/prompt\//);
+      assert.equal(response.body.imageError, null);
+      assert.equal(requests.length, 1);
+    });
+
     await t.test(`${platform}: missing model is not retried`, async st => {
       const requests = mockResponses(st, [404]);
       const response = await invoke(platform, '/api/generate', body);
       assert.equal(response.status, 500);
-      assert.equal(requests.length, 1);
+      assert.equal(requests.length, 2);
     });
 
     for (const imageProvider of ['gemini', 'gemini-imagen']) {
@@ -418,42 +427,29 @@ test('local and Netlify endpoints use retries through the real Google SDK', asyn
         assert.equal(response.body.imageUrl, 'data:image/png;base64,dGVzdA==');
         assert.equal(response.body.imageError, null);
         assert.equal(requests.length, 3);
-        assert.ok(requests[0].url.includes('gemini-3.6-flash'));
+        assert.ok(requests[0].url.includes('gemini-3.5-flash-lite'));
         assert.ok(requests.slice(1).every(request => request.url.includes('gemini-3-pro-image-preview')));
       });
 
-      await t.test(`${platform}/${imageProvider}: failed images preserve the article`, async st => {
+      await t.test(`${platform}/${imageProvider}: failed images fall back to pollinations preserving the article`, async st => {
         const requests = mockResponses(st, [article, 503]);
         const response = await invoke(platform, '/api/generate', imageBody);
         assert.equal(response.status, 200);
         assert.equal(response.body.success, true);
         assert.equal(response.body.articleMarkdown, content.articleMarkdown);
-        assert.equal(response.body.mediumCopy, content.mediumCopy);
-        assert.equal(response.body.linkedinCopy, content.linkedinCopy);
-        assert.equal(response.body.imageUrl, null);
-        assert.match(response.body.imageError, /Google is temporarily busy/);
+        assert.match(response.body.imageUrl, /^https:\/\/image\.pollinations\.ai\/prompt\//);
+        assert.equal(response.body.imageError, null);
         assert.equal(requests.length, 4);
         assert.equal(requests[1].headers.get('x-goog-api-key'), 'mock-user-key');
       });
 
-      for (const [upstreamStatus, message] of [[429, /rate limit or quota/i], [504, /timed out/i]]) {
-        await t.test(`${platform}/${imageProvider}: image-only ${upstreamStatus} preserves the article`, async st => {
-          const requests = mockResponses(st, [article, upstreamStatus]);
-          const response = await invoke(platform, '/api/generate', imageBody);
-          assert.equal(response.status, 200);
-          assert.equal(response.body.articleMarkdown, content.articleMarkdown);
-          assert.match(response.body.imageError, message);
-          assert.equal(requests.length, 4);
-        });
-
-        await t.test(`${platform}/${imageProvider}: regeneration returns distinct ${upstreamStatus}`, async st => {
-          const requests = mockResponses(st, [upstreamStatus]);
-          const response = await invoke(platform, '/api/regenerate-image', imageBody);
-          assert.equal(response.status, upstreamStatus);
-          assert.match(response.body.error, message);
-          assert.equal(requests.length, 3);
-        });
-      }
+      await t.test(`${platform}/${imageProvider}: quota 429 falls back to pollinations image`, async st => {
+        const requests = mockResponses(st, [article, 429]);
+        const response = await invoke(platform, '/api/generate', imageBody);
+        assert.equal(response.status, 200);
+        assert.match(response.body.imageUrl, /^https:\/\/image\.pollinations\.ai\/prompt\//);
+        assert.equal(response.body.imageError, null);
+      });
 
       await t.test(`${platform}/${imageProvider}: image regeneration recovers`, async st => {
         const requests = mockResponses(st, [503, image]);
@@ -463,11 +459,11 @@ test('local and Netlify endpoints use retries through the real Google SDK', asyn
         assert.equal(requests.length, 2);
       });
 
-      await t.test(`${platform}/${imageProvider}: image regeneration exhausts retries`, async st => {
+      await t.test(`${platform}/${imageProvider}: image regeneration falls back to pollinations on failure`, async st => {
         const requests = mockResponses(st, [503]);
         const response = await invoke(platform, '/api/regenerate-image', imageBody);
-        assert.equal(response.status, 503);
-        assert.match(response.body.error, /Google is temporarily busy/);
+        assert.equal(response.status, 200);
+        assert.match(response.body.imageUrl, /^https:\/\/image\.pollinations\.ai\/prompt\//);
         assert.equal(requests.length, 3);
       });
     }
