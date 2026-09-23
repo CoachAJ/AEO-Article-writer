@@ -34,12 +34,13 @@ app.post('/api/generate', async (req, res) => {
       return res.status(400).json({ error: 'Topic and Business Type are required' });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({ error: 'Gemini API key not configured on server' });
+    const geminiKey = userGeminiKey || process.env.GEMINI_API_KEY;
+    if (!geminiKey) {
+      return res.status(400).json({ error: 'Gemini API key not configured. Please enter your Gemini API key in the form or configure GEMINI_API_KEY on the server.' });
     }
 
     // Initialize Google GenAI client
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: geminiKey });
 
     const isHealthTopic = /health|medical|disease|nutrition|supplement|vitamin|mineral|wellness|diet|symptom|treatment|cure|doctor|patient|body|immune|chronic|deficien/i.test(topic + ' ' + businessType);
 
@@ -266,10 +267,11 @@ app.post('/api/regenerate-image', async (req, res) => {
     let imageError = null;
 
     if (imageProvider === 'gemini') {
-      if (!process.env.GEMINI_API_KEY) {
-        return res.status(500).json({ error: 'Gemini API key not configured on server' });
+      const geminiKey = userGeminiKey || process.env.GEMINI_API_KEY;
+      if (!geminiKey) {
+        return res.status(400).json({ error: 'Gemini API key not configured. Please enter your Gemini API key in the form or configure GEMINI_API_KEY on the server.' });
       }
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: geminiKey });
       const imageResult = await generateContent(ai, {
         model: 'gemini-3-pro-image-preview',
         contents: {

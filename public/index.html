@@ -84,6 +84,23 @@
             </div>
           </div>
 
+          <!-- Collapsible API Key Section -->
+          <div class="form-section collapsible">
+            <button type="button" class="collapsible-toggle" id="apiKeyToggle">
+              <span>Gemini API Key (Optional)</span>
+              <svg class="chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div class="collapsible-content" id="apiKeyContent">
+              <div class="form-group">
+                <label for="userGeminiKey">Your Gemini API Key</label>
+                <input type="password" id="userGeminiKey" name="userGeminiKey" placeholder="AIza...">
+                <p class="helper-text">Optional. If the shared server key reaches its rate limit or quota, paste your key here. Used for text and Imagen 3 images. Not stored.</p>
+              </div>
+            </div>
+          </div>
+
           <!-- Image Generation Section -->
           <div class="form-section collapsible">
             <button type="button" class="collapsible-toggle" id="imageToggle">
@@ -114,12 +131,6 @@
                     <span class="radio-label">DALL-E 3 <span class="badge premium">Your Key - HD</span></span>
                   </label>
                 </div>
-              </div>
-              
-              <div class="form-group api-key-group" id="geminiKeyGroup" style="display: none;">
-                <label for="userGeminiKey">Gemini API Key</label>
-                <input type="password" id="userGeminiKey" name="userGeminiKey" placeholder="AIza...">
-                <p class="helper-text">Your key is used for Imagen 3 HD images and not stored.</p>
               </div>
               
               <div class="form-group api-key-group" id="openaiKeyGroup" style="display: none;">

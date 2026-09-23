@@ -45,12 +45,12 @@ exports.handler = async (event, context) => {
     let imageError = null;
 
     if (imageProvider === 'gemini') {
-      const geminiKey = process.env.GEMINI_API_KEY;
+      const geminiKey = userGeminiKey || process.env.GEMINI_API_KEY;
       if (!geminiKey) {
         return {
-          statusCode: 500,
+          statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'Gemini API key not configured on server' })
+          body: JSON.stringify({ error: 'Gemini API key not configured. Please enter your Gemini API key in the form or configure GEMINI_API_KEY on the server.' })
         };
       }
       

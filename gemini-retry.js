@@ -10,7 +10,7 @@ const FAILURE_DETAILS = {
   },
   rate_limit: {
     statusCode: 429,
-    message: 'Google rejected the request because of a rate limit or quota. Please wait before retrying and check your Gemini API quota if this continues.'
+    message: 'Google rejected the request because of a rate limit or quota on the API key. Please wait a moment, or enter your own Gemini API key in the form to continue.'
   },
   unavailable: {
     statusCode: 503,
@@ -75,11 +75,7 @@ function createGeminiGenerator(context, {
           ...parameters,
           config: {
             ...parameters.config,
-            abortSignal: controller.signal,
-            httpOptions: {
-              ...parameters.config?.httpOptions,
-              timeout: remaining
-            }
+            abortSignal: controller.signal
           }
         });
       } catch (error) {

@@ -1,7 +1,7 @@
 const contentGenerationConfig = {
   temperature: 0.7,
   maxOutputTokens: 16384,
-  thinkingConfig: { thinkingLevel: 'LOW' },
+  thinkingConfig: { thinkingLevel: 'MINIMAL' },
   responseMimeType: 'application/json',
   responseJsonSchema: {
     type: 'object',

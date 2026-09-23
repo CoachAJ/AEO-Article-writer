@@ -37,7 +37,7 @@ test('successful requests preserve parameters and return without retries', async
   assert.equal(h.calls[0].model, parameters.model);
   assert.equal(h.calls[0].contents, parameters.contents);
   assert.equal(h.calls[0].config.temperature, 0.7);
-  assert.equal(h.calls[0].config.httpOptions.timeout, 55000);
+  assert.ok(h.calls[0].config.abortSignal instanceof AbortSignal);
   assert.equal(parameters.config.abortSignal, undefined);
 });
 
@@ -47,7 +47,7 @@ for (const status of [408, 429, 500, 502, 503, 504]) {
     assert.deepEqual(await h.generate(h.ai, parameters), { text: 'recovered' });
     assert.equal(h.calls.length, 3);
     assert.deepEqual(h.delays, [1125, 2125]);
-    assert.deepEqual(h.calls.map(call => call.config.httpOptions.timeout), [55000, 53875, 51750]);
+    assert.ok(h.calls.every(call => call.config.abortSignal instanceof AbortSignal));
   });
 }
 
@@ -148,11 +148,11 @@ test('honors Google RetryInfo without exceeding the deadline', async () => {
 test('shares the deadline between text and image calls and reserves response time', async () => {
   const h = setup([{ text: 'article' }], 10000);
   await h.generate(h.ai, parameters);
-  assert.equal(h.calls[0].config.httpOptions.timeout, 8000);
+  assert.equal(h.calls.length, 1);
   h.advance(6500);
   await h.generate(h.ai, parameters);
-  assert.equal(h.calls[1].config.httpOptions.timeout, 1500);
-  h.advance(1000);
+  assert.equal(h.calls.length, 2);
+  h.advance(1500);
   await assert.rejects(h.generate(h.ai, parameters), GeminiUnavailableError);
   assert.equal(h.calls.length, 2);
 });
@@ -304,7 +304,7 @@ test('local and Netlify endpoints use retries through the real Google SDK', asyn
       const config = requests[0].body.generationConfig;
       assert.equal(config.responseMimeType, 'application/json');
       assert.equal(config.maxOutputTokens, 16384);
-      assert.equal(config.thinkingConfig.thinkingLevel, 'LOW');
+      assert.equal(config.thinkingConfig.thinkingLevel, 'MINIMAL');
       assert.deepEqual(config.responseJsonSchema.required, Object.keys(content));
       for (const field of Object.keys(content)) {
         assert.equal(config.responseJsonSchema.properties[field].type, 'string');
@@ -347,6 +347,22 @@ test('local and Netlify endpoints use retries through the real Google SDK', asyn
         assert.ok(log.mock.calls.every(call => call.arguments[0] !== 'Raw response:'));
       });
     }
+
+    await t.test(`${platform}: uses userGeminiKey when provided or when server key is missing`, async st => {
+      delete process.env.GEMINI_API_KEY;
+      try {
+        const noKeyResponse = await invoke(platform, '/api/generate', body);
+        assert.equal(noKeyResponse.status, 400);
+        assert.match(noKeyResponse.body.error, /Gemini API key not configured/);
+
+        const requests = mockResponses(st, [article]);
+        const customResponse = await invoke(platform, '/api/generate', { ...body, userGeminiKey: 'user-supplied-key' });
+        assert.equal(customResponse.status, 200);
+        assert.equal(requests[0].headers.get('x-goog-api-key'), 'user-supplied-key');
+      } finally {
+        process.env.GEMINI_API_KEY = 'mock-server-key';
+      }
+    });
 
     await t.test(`${platform}: text recovers after 503`, async st => {
       const requests = mockResponses(st, [503, article]);
@@ -417,7 +433,7 @@ test('local and Netlify endpoints use retries through the real Google SDK', asyn
         assert.equal(response.body.imageUrl, null);
         assert.match(response.body.imageError, /Google is temporarily busy/);
         assert.equal(requests.length, 4);
-        assert.equal(requests[1].headers.get('x-goog-api-key'), imageProvider === 'gemini' ? 'mock-server-key' : 'mock-user-key');
+        assert.equal(requests[1].headers.get('x-goog-api-key'), 'mock-user-key');
       });
 
       for (const [upstreamStatus, message] of [[429, /rate limit or quota/i], [504, /timed out/i]]) {

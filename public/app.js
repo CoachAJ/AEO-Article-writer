@@ -41,6 +41,15 @@ document.addEventListener('DOMContentLoaded', () => {
       ctaContent.classList.toggle('open');
     });
 
+    const apiKeyToggle = document.getElementById('apiKeyToggle');
+    const apiKeyContent = document.getElementById('apiKeyContent');
+    if (apiKeyToggle && apiKeyContent) {
+      apiKeyToggle.addEventListener('click', () => {
+        apiKeyToggle.classList.toggle('active');
+        apiKeyContent.classList.toggle('open');
+      });
+    }
+
     imageToggle.addEventListener('click', () => {
       imageToggle.classList.toggle('active');
       imageContent.classList.toggle('open');
@@ -51,19 +60,22 @@ document.addEventListener('DOMContentLoaded', () => {
   function initImageProviderSelection() {
     const radioButtons = document.querySelectorAll('input[name="imageProvider"]');
     const openaiKeyGroup = document.getElementById('openaiKeyGroup');
-    const geminiKeyGroup = document.getElementById('geminiKeyGroup');
+    const apiKeyToggle = document.getElementById('apiKeyToggle');
+    const apiKeyContent = document.getElementById('apiKeyContent');
 
     radioButtons.forEach(radio => {
       radio.addEventListener('change', (e) => {
-        // Hide all key groups first
-        openaiKeyGroup.style.display = 'none';
-        geminiKeyGroup.style.display = 'none';
-        
-        // Show relevant key group
+        if (openaiKeyGroup) openaiKeyGroup.style.display = 'none';
+
         if (e.target.value === 'openai') {
-          openaiKeyGroup.style.display = 'block';
+          if (openaiKeyGroup) openaiKeyGroup.style.display = 'block';
         } else if (e.target.value === 'gemini-imagen') {
-          geminiKeyGroup.style.display = 'block';
+          if (apiKeyToggle && apiKeyContent && !apiKeyContent.classList.contains('open')) {
+            apiKeyToggle.classList.add('active');
+            apiKeyContent.classList.add('open');
+          }
+          const keyInput = document.getElementById('userGeminiKey');
+          if (keyInput) keyInput.focus();
         }
       });
     });
@@ -212,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
           imagePrompt: newPrompt,
           imageProvider: imageProvider,
           openaiKey: imageProvider === 'openai' ? formData.get('openaiKey') : null,
-          userGeminiKey: imageProvider === 'gemini-imagen' ? formData.get('userGeminiKey') : null
+          userGeminiKey: formData.get('userGeminiKey') || null
         })
       });
 
@@ -343,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ygyId: formData.get('ygyId'),
       imageProvider: imageProvider !== 'none' ? imageProvider : null,
       openaiKey: imageProvider === 'openai' ? formData.get('openaiKey') : null,
-      userGeminiKey: imageProvider === 'gemini-imagen' ? formData.get('userGeminiKey') : null
+      userGeminiKey: formData.get('userGeminiKey') || null
     };
 
     // Validate required fields
